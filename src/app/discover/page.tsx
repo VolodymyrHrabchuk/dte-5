@@ -30,19 +30,18 @@ const helperLabels: Record<Helper, string> = {
 
 const progressByStep: Record<1 | 2 | 3, number> = { 1: 25, 2: 65, 3: 100 };
 
-// Явные функции, возвращающие корректный union
+
 const incStep = (s: 1 | 2 | 3): 1 | 2 | 3 => (s === 1 ? 2 : s === 2 ? 3 : 3);
 const decStep = (s: 1 | 2 | 3): 1 | 2 | 3 => (s === 3 ? 2 : s === 2 ? 1 : 1);
 
 export default function DiscoverPage() {
   const router = useRouter();
 
-  // локальное состояние
+
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [focus, setFocus] = useState<Focus | null>(null);
   const [rating, setRating] = useState<1 | 2 | 3 | 4 | 5 | null>(null);
 
-  // flash-подсветка выбранного варианта
   const [flashIdx, setFlashIdx] = useState<number | null>(null);
   const flashThen = (i: number, fn: () => void) => {
     setFlashIdx(i);
@@ -99,12 +98,14 @@ export default function DiscoverPage() {
               key={rank}
               leading={rank}
               selected={flashIdx === i}
-              onClick={() =>
-                flashThen(i, () => {
-                  setRating(rank as 1 | 2 | 3 | 4 | 5);
-                  next();
-                })
-              }
+              onClick={() => {
+                if (rank >= 4) {
+                  flashThen(i, () => {
+                    setRating(rank as 1 | 2 | 3 | 4 | 5);
+                    next();
+                  });
+                }
+              }}
             >
               {rank === 5 &&
                 "I’ve been steady and composed, even under pressure."}
@@ -131,36 +132,39 @@ export default function DiscoverPage() {
 
       <div className='space-y-3'>
         {(Object.keys(helperLabels) as Array<keyof typeof helperLabels>).map(
-          (key, i) => (
-            <OptionButton
-              key={key}
-              align='left'
-              selected={flashIdx === i}
-              onClick={() =>
-                flashThen(i, () => {
-                  // сохраняем выбор и открываем Dashboard с попапом Train
-                  try {
-                    completeDiscoverMakeTrainAvailable();
-                    const stored = JSON.parse(
-                      localStorage.getItem("answers") || "[]"
-                    );
-                    stored.push({
-                      focus,
-                      rating,
-                      helper: key,
-                      ts: Date.now(),
-                    });
-                    localStorage.setItem("answers", JSON.stringify(stored));
-                  } catch {}
+          (key, i) => {
+            const isAllowed = key === "lead-improve";
+            return (
+              <OptionButton
+                key={key}
+                align='left'
+                selected={flashIdx === i}
+                disabled={!isAllowed}
+                onClick={() =>
+                  isAllowed &&
+                  flashThen(i, () => {
+                    try {
+                      completeDiscoverMakeTrainAvailable();
+                      const stored = JSON.parse(
+                        localStorage.getItem("answers") || "[]"
+                      );
+                      stored.push({
+                        focus,
+                        rating,
+                        helper: key,
+                        ts: Date.now(),
+                      });
+                      localStorage.setItem("answers", JSON.stringify(stored));
+                    } catch {}
 
-                  // replace — чтобы не возвращаться "Назад" в финальный шаг Discover
-                  router.replace("/dashboard?view=discover");
-                })
-              }
-            >
-              {helperLabels[key]}
-            </OptionButton>
-          )
+                    router.replace("/dashboard?view=discover");
+                  })
+                }
+              >
+                {helperLabels[key]}
+              </OptionButton>
+            );
+          }
         )}
       </div>
     </Screen>

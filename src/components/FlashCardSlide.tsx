@@ -22,7 +22,7 @@ type FlashcardSlideProps = {
   onUserInputChange: (value: string) => void;
   swiper: Swiper | null;
   onComplete?: () => void;
-  onBack?: () => void; // ⬅️ Новое
+  onBack?: () => void;
 };
 
 export default function FlashcardSlide({
@@ -34,9 +34,10 @@ export default function FlashcardSlide({
   onUserInputChange,
   swiper,
   onComplete,
-  onBack, // ⬅️ Новое
+  onBack,
 }: FlashcardSlideProps) {
   const [bookmarked, setBookmarked] = useState(false);
+  const [timerFinished, setTimerFinished] = useState(false);
 
   const hasTyped = useMemo(
     () => card.type === "input" && userInput.trim().length > 0,
@@ -61,19 +62,21 @@ export default function FlashcardSlide({
     <div className='h-full flex flex-col'>
       <BackButton
         onClick={() => {
-          if (onBack) return onBack(); // ⬅️ поддержка внешнего back
+          if (onBack) return onBack();
           if (index > 0) swiper?.slidePrev();
         }}
         className='z-10 mt-[1.5rem] mb-6'
       />
 
       <div className='flex-1 flex flex-col justify-center items-center'>
+        {/* VIDEO */}
         {card.type === "video" && (
           <div className='w-full h-full'>
             <Counter count={index} length={cardsLength} />
           </div>
         )}
 
+        {/* TIMER */}
         {card.type === "timer" && (
           <div className='w-full h-full'>
             <div className='flex flex-col space-y-4 mb-12'>
@@ -87,11 +90,16 @@ export default function FlashcardSlide({
             </div>
 
             <div className='flex-col items-center justify-center'>
-              <Timer timer={60} className='mx-auto' />
+              <Timer
+                timer={90}
+                className='mx-auto'
+                onComplete={() => setTimerFinished(true)}
+              />
             </div>
           </div>
         )}
 
+        {/* TEXT */}
         {card.type === "text" && (
           <div className='w-full h-full'>
             <div className='flex flex-col mt-14 w-full space-y-4'>
@@ -111,9 +119,9 @@ export default function FlashcardSlide({
           </div>
         )}
 
+        {/* AUDIO */}
         {card.type === "audio" && (
           <div className='absolute inset-0'>
-            {/* верх: счётчик + заголовок */}
             <div className='pointer-events-none absolute z-10 left-0 right-0 top-[calc(env(safe-area-inset-top)+64px)] px-4 flex flex-col gap-3'>
               <Counter count={index} length={cardsLength} />
               {card.title && (
@@ -124,10 +132,9 @@ export default function FlashcardSlide({
               {card.content && <p className='text-white/90'>{card.content}</p>}
             </div>
 
-            {/* волна + автосубтитры (useTranscript внутри) */}
             <div className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[100vw] z-10'>
               <AudioWave
-                src={card.audioUrl ?? "/audio.m4a"} // ⬅️ ключевая правка
+                src={card.audioUrl ?? "/audio.m4a"}
                 bgClass='bg-transparent !rounded-none'
                 minFill={0.4}
                 maxFill={0.7}
@@ -139,6 +146,7 @@ export default function FlashcardSlide({
           </div>
         )}
 
+        {/* INPUT */}
         {card.type === "input" && (
           <div className='flex flex-col w-full h-full space-y-4'>
             <Counter count={index} length={cardsLength} />
@@ -156,8 +164,7 @@ export default function FlashcardSlide({
         )}
       </div>
 
-      {/* свайп-подсказка только на первом */}
-      {index === 0 /* ⬅️ фикс */ && (
+      {(index === 0 || timerFinished) && (
         <div className='flex justify-center mb-[4.125rem]'>
           <SwipeIcon />
         </div>

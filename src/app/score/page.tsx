@@ -1,11 +1,12 @@
 "use client";
 
 import { AnimatePresence, motion, animate } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Button from "@/components/ui/Button";
 import PopperCrackerIcon from "@/components/icons/PopperCrackerIcon";
 import Link from "next/link";
+import HITEIcon from "@/components/icons/HITEIcon";
 
 // ===== helpers =====
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
@@ -16,23 +17,34 @@ function CountUp({
   duration = 0.8,
   format = (v: number) => v.toLocaleString(),
   delay = 0,
+  onComplete,
 }: {
   from?: number;
   to: number;
   duration?: number;
   delay?: number;
   format?: (v: number) => string;
+  onComplete?: () => void;
 }) {
   const [val, setVal] = useState(from);
+
+  const onCompleteRef = useRef(onComplete);
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
+
   useEffect(() => {
     const controls = animate(from, to, {
       duration,
       delay,
       ease: "easeOut",
       onUpdate: (v) => setVal(Math.round(v)),
+      onComplete: () => onCompleteRef.current?.(),
     });
+
     return () => controls.stop();
   }, [from, to, duration, delay]);
+
   return <span className='tabular-nums'>{format(val)}</span>;
 }
 
@@ -64,45 +76,96 @@ function ClockIcon() {
     </svg>
   );
 }
-function HITEIcon() {
-  return (
-    <svg width='24' height='24' viewBox='0 0 24 24' fill='none'>
-      <circle cx='12' cy='12' r='10' fill='#6E5DFF' />
-      <circle cx='12' cy='12' r='5' fill='#2B235A' />
-      <circle cx='12' cy='12' r='2' fill='#B7A6FF' />
-    </svg>
-  );
-}
 
 // ===== Page =====
 export default function ScorePage() {
-
   const HITE_BASE = 952;
+
   const completedVal = 100;
   const streakVal = 7;
-  const correctRowVal = 15;
-  const totalVal = completedVal + streakVal + correctRowVal; // 122
+
+  const totalVal = completedVal + streakVal;
   const hiteDeltaVal = totalVal;
+
   const daysFrom = 5;
   const daysTo = 6;
 
-  // анимация перехода 1 → 2 экран
   const [showFeedback, setShowFeedback] = useState(false);
+
+  const xpLevel: "Rookie" | "Starter" = showFeedback ? "Starter" : "Rookie";
+
+  // success sound
+  const successAudioRef = useRef<HTMLAudioElement | null>(null);
   useEffect(() => {
-    const t = setTimeout(() => setShowFeedback(true), 1400); // задержка как в рефе
-    return () => clearTimeout(t);
+    const a = new Audio("/success.mp3");
+    a.preload = "auto";
+    a.volume = 0.8;
+    // @ts-expect-error safari inline
+    a.playsInline = true;
+    successAudioRef.current = a;
+    return () => {
+      if (successAudioRef.current) {
+        try {
+          successAudioRef.current.pause();
+        } catch {}
+        successAudioRef.current.src = "";
+        successAudioRef.current = null;
+      }
+    };
   }, []);
+
+  useEffect(() => {
+    const baseDelay = 0.35;
+
+    const soundTimer = window.setTimeout(() => {
+      const a = successAudioRef.current;
+      if (a) {
+        try {
+          a.currentTime = 0;
+          a.play().catch(() => {});
+        } catch {}
+      }
+    }, (baseDelay + 0.6) * 1000);
+
+    const headlineTimer = window.setTimeout(() => setShowFeedback(true), 1400);
+
+    return () => {
+      clearTimeout(soundTimer);
+      clearTimeout(headlineTimer);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!showFeedback) return;
+    try {
+      const newScore = HITE_BASE + hiteDeltaVal;
+      localStorage.setItem("hiteBase", String(newScore)); 
+      localStorage.setItem("dteCompletedPoints", String(completedVal));
+      localStorage.setItem("dteStreakPoints", String(streakVal));
+      localStorage.setItem("kcCorrectBonus", "0");
+      localStorage.setItem("streakDays", String(daysTo));
+      localStorage.setItem("xpLevel", xpLevel);
+      window.dispatchEvent(new Event("planprogress:updated")); 
+    } catch {}
+  }, [hiteDeltaVal, showFeedback, xpLevel]);
+
+  const [scoreCardReady, setScoreCardReady] = useState(false);
+  const [runScoreAnim, setRunScoreAnim] = useState(false);
+  const [scoreAnimDone, setScoreAnimDone] = useState(false);
+
+  useEffect(() => {
+    if (showFeedback && scoreCardReady && !runScoreAnim) {
+      setRunScoreAnim(true); 
+    }
+  }, [showFeedback, scoreCardReady, runScoreAnim]);
 
   return (
     <div className='min-h-dvh relative text-white'>
-     
       <div className='absolute inset-0 -z-10'>
         <Image src='/bg.png' alt='' fill priority className='object-cover' />
-        <div className='absolute inset-0 bg-black/55' />
       </div>
 
       <div className='max-w-md mx-auto px-6 pt-3 pb-10 flex flex-col min-h-dvh'>
-
         <AnimatePresence mode='wait'>
           {!showFeedback ? (
             <motion.div
@@ -173,6 +236,7 @@ export default function ScorePage() {
           initial={{ opacity: 0, y: 16, scale: 0.985 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.7, ease: EASE, delay: 0.15 }}
+          onAnimationComplete={() => setScoreCardReady(true)} 
         >
           <div
             aria-hidden
@@ -189,24 +253,40 @@ export default function ScorePage() {
               <div className='flex items-center gap-2'>
                 <HITEIcon />
                 <span className='font-medium text-lg'>HITE Score</span>
-            
-                <span className='ml-1 text-[10px] px-2 py-1 rounded-2xl bg-[#363391] text-[#B2FF8B]'>
-                  {showFeedback ? "🐤 Starter" : "🌱 Rookie"}
+
+                <span
+                  className='ml-1 text-[10px] px-2 py-1 rounded-4xl font-medium'
+                  style={{
+                    backgroundColor:
+                      xpLevel === "Rookie" ? "#363391" : "#924AAB",
+                    color: xpLevel === "Rookie" ? "#B2FF8B" : "#FFFF00",
+                  }}
+                >
+                  {xpLevel === "Rookie" ? "🌱 Rookie" : "🐤 Starter"}
                 </span>
               </div>
               <span className='font-semibold text-2xl'>
-                <CountUp
-                  from={HITE_BASE}
-                  to={HITE_BASE + hiteDeltaVal}
-                  duration={1.0}
-                  delay={showFeedback ? 0.25 : 0}
-                />
+                
+                {!runScoreAnim ? (
+                  <span className='tabular-nums'>
+                    {HITE_BASE.toLocaleString()}
+                  </span>
+                ) : (
+                  <CountUp
+                    key={`hite-${HITE_BASE}-${hiteDeltaVal}`} 
+                    from={HITE_BASE}
+                    to={HITE_BASE + hiteDeltaVal}
+                    duration={1.0}
+                    delay={0}
+                    onComplete={() => setScoreAnimDone(true)}
+                  />
+                )}
               </span>
             </div>
 
-            
             <AnimatePresence initial={false}>
-              {showFeedback && (
+             
+              {showFeedback && scoreAnimDone && (
                 <motion.div
                   key='breakdown'
                   initial={{ opacity: 0, y: 8 }}
@@ -223,10 +303,6 @@ export default function ScorePage() {
                     <span>DTE Streak Multiplier</span>
                     <span className='tabular-nums'>+{streakVal}</span>
                   </div>
-                  <div className='flex items-center justify-between py-0.5 text-white/85'>
-                    <span>Correct Knowledge Check Answer</span>
-                    <span className='tabular-nums'>+{correctRowVal}</span>
-                  </div>
 
                   <div className='mt-1 flex items-center justify-between'>
                     <span>Total</span>
@@ -239,7 +315,6 @@ export default function ScorePage() {
             </AnimatePresence>
           </div>
         </motion.div>
-
 
         <div className='mt-auto pt-8'>
           <Link href='/feedback' className='block'>

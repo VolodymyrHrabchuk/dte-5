@@ -6,7 +6,7 @@ import Flashcards, { FlashcardsContent } from "@/components/Flashcards";
 import PrefetchTranscripts from "@/components/PrefetchTranscripts";
 import { completeTrainMakeExecuteAvailable } from "@/lib/planProgress";
 
-// утилита: распознаём видео-фон
+
 const isVideoSrc = (src: string) => /\.mp4$|\.webm$|\.ogg$/i.test(src ?? "");
 
 export default function TrainPage() {
@@ -37,7 +37,6 @@ export default function TrainPage() {
     }
   };
 
-  // 1) audio (+субтитры), 2) timer, 3) input
   const flashcards: FlashcardsContent[] = useMemo(
     () => [
       {
@@ -87,7 +86,7 @@ export default function TrainPage() {
       // Train -> completed, Execute -> available
       completeTrainMakeExecuteAvailable();
     } finally {
-      // на дашборде твой эффект сам покажет модалку "Execute Section Unlocked!"
+     
       router.replace("/dashboard");
     }
   };
