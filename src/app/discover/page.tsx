@@ -30,13 +30,11 @@ const helperLabels: Record<Helper, string> = {
 
 const progressByStep: Record<1 | 2 | 3, number> = { 1: 25, 2: 65, 3: 100 };
 
-
 const incStep = (s: 1 | 2 | 3): 1 | 2 | 3 => (s === 1 ? 2 : s === 2 ? 3 : 3);
 const decStep = (s: 1 | 2 | 3): 1 | 2 | 3 => (s === 3 ? 2 : s === 2 ? 1 : 1);
 
 export default function DiscoverPage() {
   const router = useRouter();
-
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [focus, setFocus] = useState<Focus | null>(null);
@@ -97,7 +95,7 @@ export default function DiscoverPage() {
             <OptionButton
               key={rank}
               leading={rank}
-              selected={flashIdx === i}
+              selected={flashIdx === i || rank === 5} 
               onClick={() => {
                 if (rank >= 4) {
                   flashThen(i, () => {
@@ -138,7 +136,7 @@ export default function DiscoverPage() {
               <OptionButton
                 key={key}
                 align='left'
-                selected={flashIdx === i}
+                selected={flashIdx === i || key === "lead-improve"} 
                 disabled={!isAllowed}
                 onClick={() =>
                   isAllowed &&

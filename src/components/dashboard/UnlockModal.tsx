@@ -31,14 +31,14 @@ export default function UnlockModal({
     <div className='fixed inset-0 z-[999] flex items-center justify-center px-4'>
       <div className='absolute inset-0 bg-black/60' onClick={onClose} />
       <div className='relative max-w-sm w-full bg-[#1b1b1b] rounded-2xl p-6 shadow-2xl border border-white/10'>
-        <h3 className='text-2xl font-bold mb-3 text-center'>{title}</h3>
-        <p className='text-white/70 text-center mb-3'>{desc}</p>
+        <h3 className='text-xl font-bold mb-3 text-center'>{title}</h3>
+        <p className='text-white/70 text-center text-sm mb-3 max-w-xs capitalize'>{desc}</p>
         <div className='flex justify-center mb-4'>
           <Image src='/lock.png' alt='lock' width={48} height={160} />
         </div>
         <button
           onClick={onAction}
-          className='w-full py-3 rounded-full bg-white text-black font-medium'
+          className='w-full py-3 rounded-full bg-white text-black font-medium text-lg'
           aria-label={cta}
         >
           {cta}

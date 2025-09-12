@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion, animate } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Button from "@/components/ui/Button";
 import PopperCrackerIcon from "@/components/icons/PopperCrackerIcon";
@@ -27,7 +27,6 @@ function CountUp({
   onComplete?: () => void;
 }) {
   const [val, setVal] = useState(from);
-
   const onCompleteRef = useRef(onComplete);
   useEffect(() => {
     onCompleteRef.current = onComplete;
@@ -41,7 +40,6 @@ function CountUp({
       onUpdate: (v) => setVal(Math.round(v)),
       onComplete: () => onCompleteRef.current?.(),
     });
-
     return () => controls.stop();
   }, [from, to, duration, delay]);
 
@@ -77,21 +75,56 @@ function ClockIcon() {
   );
 }
 
-// ===== Page =====
+// Минимальный тип для чтения answers из localStorage
+type StoredAnswer = {
+  questionId?: string | number;
+  gradable?: boolean;
+  isCorrect?: boolean;
+};
+
 export default function ScorePage() {
   const HITE_BASE = 952;
 
   const completedVal = 100;
   const streakVal = 7;
 
-  const totalVal = completedVal + streakVal;
+  // ==== KC bonus (+15 if last gradable isCorrect, else 0), либо из kcCorrectBonus ====
+  const [kcBonus, setKcBonus] = useState(0);
+
+  useEffect(() => {
+    try {
+      // 1) если заранее записали kcCorrectBonus — используем его
+      const raw = localStorage.getItem("kcCorrectBonus");
+      if (raw !== null) {
+        const v = Number(raw);
+        if (!Number.isNaN(v)) {
+          setKcBonus(v);
+          return;
+        }
+      }
+      // 2) fallback: берём последний gradable ответ и проверяем isCorrect
+      const stored: StoredAnswer[] = JSON.parse(
+        localStorage.getItem("answers") || "[]"
+      );
+      const gradable = stored.filter((a) => a?.gradable);
+      if (gradable.length > 0) {
+        const last = gradable[gradable.length - 1];
+        setKcBonus(last?.isCorrect ? 15 : 0);
+      } else {
+        setKcBonus(0);
+      }
+    } catch {
+      setKcBonus(0);
+    }
+  }, []);
+
+  const totalVal = useMemo(() => completedVal + streakVal + kcBonus, [kcBonus]);
   const hiteDeltaVal = totalVal;
 
   const daysFrom = 5;
   const daysTo = 6;
 
   const [showFeedback, setShowFeedback] = useState(false);
-
   const xpLevel: "Rookie" | "Starter" = showFeedback ? "Starter" : "Rookie";
 
   // success sound
@@ -135,19 +168,20 @@ export default function ScorePage() {
     };
   }, []);
 
+  // Пишем актуальные значения (не перетираем kcCorrectBonus нулём)
   useEffect(() => {
     if (!showFeedback) return;
     try {
       const newScore = HITE_BASE + hiteDeltaVal;
-      localStorage.setItem("hiteBase", String(newScore)); 
+      localStorage.setItem("hiteBase", String(newScore));
       localStorage.setItem("dteCompletedPoints", String(completedVal));
       localStorage.setItem("dteStreakPoints", String(streakVal));
-      localStorage.setItem("kcCorrectBonus", "0");
+      localStorage.setItem("kcCorrectBonus", String(kcBonus)); // <-- сохраняем фактический бонус
       localStorage.setItem("streakDays", String(daysTo));
       localStorage.setItem("xpLevel", xpLevel);
-      window.dispatchEvent(new Event("planprogress:updated")); 
+      window.dispatchEvent(new Event("planprogress:updated"));
     } catch {}
-  }, [hiteDeltaVal, showFeedback, xpLevel]);
+  }, [hiteDeltaVal, showFeedback, xpLevel, kcBonus]);
 
   const [scoreCardReady, setScoreCardReady] = useState(false);
   const [runScoreAnim, setRunScoreAnim] = useState(false);
@@ -155,7 +189,7 @@ export default function ScorePage() {
 
   useEffect(() => {
     if (showFeedback && scoreCardReady && !runScoreAnim) {
-      setRunScoreAnim(true); 
+      setRunScoreAnim(true);
     }
   }, [showFeedback, scoreCardReady, runScoreAnim]);
 
@@ -236,7 +270,7 @@ export default function ScorePage() {
           initial={{ opacity: 0, y: 16, scale: 0.985 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.7, ease: EASE, delay: 0.15 }}
-          onAnimationComplete={() => setScoreCardReady(true)} 
+          onAnimationComplete={() => setScoreCardReady(true)}
         >
           <div
             aria-hidden
@@ -266,14 +300,13 @@ export default function ScorePage() {
                 </span>
               </div>
               <span className='font-semibold text-2xl'>
-                
                 {!runScoreAnim ? (
                   <span className='tabular-nums'>
                     {HITE_BASE.toLocaleString()}
                   </span>
                 ) : (
                   <CountUp
-                    key={`hite-${HITE_BASE}-${hiteDeltaVal}`} 
+                    key={`hite-${HITE_BASE}-${hiteDeltaVal}`}
                     from={HITE_BASE}
                     to={HITE_BASE + hiteDeltaVal}
                     duration={1.0}
@@ -285,7 +318,6 @@ export default function ScorePage() {
             </div>
 
             <AnimatePresence initial={false}>
-             
               {showFeedback && scoreAnimDone && (
                 <motion.div
                   key='breakdown'
@@ -302,6 +334,10 @@ export default function ScorePage() {
                   <div className='flex items-center justify-between py-0.5 text-white/85'>
                     <span>DTE Streak Multiplier</span>
                     <span className='tabular-nums'>+{streakVal}</span>
+                  </div>
+                  <div className='flex items-center justify-between py-0.5 text-white/85'>
+                    <span>Correct Knowledge Check Answer</span>
+                    <span className='tabular-nums'>+{kcBonus}</span>
                   </div>
 
                   <div className='mt-1 flex items-center justify-between'>
