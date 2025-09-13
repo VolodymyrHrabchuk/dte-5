@@ -9,44 +9,43 @@ import StartButton from "./StartButton";
 interface TimerProps {
   timer: number;
   onComplete?: () => void;
+  onStart?: () => void;
   className?: string;
-  inhaleSec?: number; // 5 c
-  exhaleSec?: number; // 5 c
-  breathMinRatio?: number; // 0.6
-  breathMaxRatio?: number; // 0.9
+  inhaleSec?: number;
+  exhaleSec?: number;
+  breathMinRatio?: number;
+  breathMaxRatio?: number;
 }
 
 const Timer: React.FC<TimerProps> = ({
   timer,
   onComplete,
+  onStart,
   className,
   inhaleSec = 5,
   exhaleSec = 5,
   breathMinRatio = 0.6,
   breathMaxRatio = 0.9,
 }) => {
-  // Геометрия
   const size = 244;
   const strokeWidth = 10;
   const innerSize = 230;
   const radius = (innerSize - strokeWidth) / 2;
   const circumference = useMemo(() => radius * 2 * Math.PI, [radius]);
 
-  // Refs
-  const progressCircleRef = useRef<SVGCircleElement | null>(null); // градиентный круг
-  const eraseMaskStrokeRef = useRef<SVGCircleElement | null>(null); // штрих в маске (вырезает)
+  const progressCircleRef = useRef<SVGCircleElement | null>(null);
+  const eraseMaskStrokeRef = useRef<SVGCircleElement | null>(null);
   const progressDotRef = useRef<SVGCircleElement | null>(null);
   const breathCircleRef = useRef<SVGCircleElement | null>(null);
   const overlayRef = useRef<HTMLDivElement | null>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const breathTLRef = useRef<gsap.core.Timeline | null>(null);
 
-  // ===== SFX (ding) =====
   const dingRef = useRef<HTMLAudioElement | null>(null);
   const dingUnlockedRef = useRef(false);
 
   useEffect(() => {
-    const a = new Audio("/ding.mp3"); 
+    const a = new Audio("/ding.mp3");
     a.preload = "auto";
     a.volume = 0.8;
     dingRef.current = a;
@@ -68,9 +67,7 @@ const Timer: React.FC<TimerProps> = ({
       a.currentTime = 0;
       a.muted = false;
       dingUnlockedRef.current = true;
-    } catch {
-
-    }
+    } catch {}
   };
 
   const playDing = () => {
@@ -79,11 +76,8 @@ const Timer: React.FC<TimerProps> = ({
     try {
       a.currentTime = 0;
       void a.play().catch(() => {});
-    } catch {
-      /* ignore */
-    }
+    } catch {}
   };
-
 
   const [isRunning, setIsRunning] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
@@ -92,11 +86,12 @@ const Timer: React.FC<TimerProps> = ({
   const [rotationCount, setRotationCount] = useState(0);
   const [currentAngle, setCurrentAngle] = useState(-90);
 
-
   const startedAtRef = useRef<number | null>(null);
   const rafActiveRef = useRef(false);
   const lastWholeSecRef = useRef(0);
   const accumElapsedRef = useRef(0);
+
+  const emittedStartRef = useRef(false);
 
   const mmss = useMemo(() => {
     const m = Math.floor(displaySeconds / 60)
@@ -106,16 +101,13 @@ const Timer: React.FC<TimerProps> = ({
     return `${m}:${s}`;
   }, [displaySeconds]);
 
-
   const setProgressFrame = (elapsedMs: number) => {
     const totalMs = timer * 1000;
     const clamped = Math.min(elapsedMs, totalMs);
-
-    
     const degPerSec = 18;
-    const rotationPeriodMs = (360 / degPerSec) * 1000; 
+    const rotationPeriodMs = (360 / degPerSec) * 1000;
     const turn = Math.floor(clamped / rotationPeriodMs);
-    const phase = (clamped % rotationPeriodMs) / rotationPeriodMs; 
+    const phase = (clamped % rotationPeriodMs) / rotationPeriodMs;
 
     const angleDeg = -90 + phase * 360;
     const angleRad = (angleDeg * Math.PI) / 180;
@@ -176,7 +168,6 @@ const Timer: React.FC<TimerProps> = ({
     }
   };
 
-  
   const ensureBreathTimeline = () => {
     const el = breathCircleRef.current;
     if (!el) return;
@@ -200,18 +191,12 @@ const Timer: React.FC<TimerProps> = ({
     if (distToMax < distToMin) {
       tl.to(el, { attr: { r: minR }, duration: Math.max(0.1, exhaleSec) }).to(
         el,
-        {
-          attr: { r: maxR },
-          duration: Math.max(0.1, inhaleSec),
-        }
+        { attr: { r: maxR }, duration: Math.max(0.1, inhaleSec) }
       );
     } else {
       tl.to(el, { attr: { r: maxR }, duration: Math.max(0.1, inhaleSec) }).to(
         el,
-        {
-          attr: { r: minR },
-          duration: Math.max(0.1, exhaleSec),
-        }
+        { attr: { r: minR }, duration: Math.max(0.1, exhaleSec) }
       );
     }
 
@@ -219,10 +204,8 @@ const Timer: React.FC<TimerProps> = ({
     if (isPaused) tl.pause();
   };
 
-
   useEffect(() => {
     if (!isRunning || isPaused) return;
-
 
     if (overlayRef.current && displaySeconds === 0) {
       gsap.fromTo(
@@ -279,9 +262,7 @@ const Timer: React.FC<TimerProps> = ({
         breathTLRef.current?.kill();
         breathTLRef.current = null;
 
-        // === DING ===
         playDing();
-
         onComplete?.();
         return;
       }
@@ -305,12 +286,15 @@ const Timer: React.FC<TimerProps> = ({
     circumference,
   ]);
 
-  // Кнопки
   const handleStart = () => {
-    // разблокируем звук по юзер-жесту
     void unlockDing();
-
     if (isRunning || isComplete) return;
+
+    if (!emittedStartRef.current) {
+      emittedStartRef.current = true;
+      onStart?.();
+    }
+
     if (buttonRef.current) {
       gsap.to(buttonRef.current, {
         scale: 0.96,
@@ -331,9 +315,7 @@ const Timer: React.FC<TimerProps> = ({
   };
 
   const handlePauseResume = () => {
-    // подстраховка: разблокируем тоже
     void unlockDing();
-
     if (!isRunning) return;
     if (!isPaused) {
       setIsPaused(true);
@@ -371,9 +353,7 @@ const Timer: React.FC<TimerProps> = ({
           breathTLRef.current?.kill();
           breathTLRef.current = null;
 
-          // === DING ===
           playDing();
-
           onComplete?.();
           return;
         }
@@ -384,9 +364,7 @@ const Timer: React.FC<TimerProps> = ({
   };
 
   const handleStop = () => {
-    // на всякий случай разблокировать тоже можно
     void unlockDing();
-
     rafActiveRef.current = false;
     setIsRunning(false);
     setIsPaused(false);
@@ -397,7 +375,6 @@ const Timer: React.FC<TimerProps> = ({
     setRotationCount(0);
     setCurrentAngle(-90);
 
-    // Сброс окружностей/маски
     if (progressCircleRef.current) {
       gsap.set(progressCircleRef.current, {
         strokeDasharray: `0 ${circumference}`,
@@ -410,8 +387,6 @@ const Timer: React.FC<TimerProps> = ({
         strokeDashoffset: 0,
       });
     }
-
-    // Точка в верх
     if (progressDotRef.current) {
       gsap.set(progressDotRef.current, {
         cx: size / 2,
@@ -419,7 +394,6 @@ const Timer: React.FC<TimerProps> = ({
       });
     }
 
-    // Остановить дыхание и вернуть к спокойному радиусу
     const el = breathCircleRef.current;
     breathTLRef.current?.kill();
     breathTLRef.current = null;
@@ -441,10 +415,8 @@ const Timer: React.FC<TimerProps> = ({
   return (
     <>
       <div className={twMerge("block", className)} style={{ width: size }}>
-        {/* Фиксированная область круга */}
         <div className='relative' style={{ width: size, height: size }}>
           <svg width={size} height={size} className='block'>
-            {/* фон дорожки */}
             <circle
               cx={size / 2}
               cy={size / 2}
@@ -453,8 +425,6 @@ const Timer: React.FC<TimerProps> = ({
               stroke='rgba(255,255,255,0.28)'
               strokeWidth={strokeWidth}
             />
-
-            {/* градиенты + маска */}
             <defs>
               <linearGradient
                 id='progressGradient'
@@ -466,7 +436,6 @@ const Timer: React.FC<TimerProps> = ({
                 <stop offset='0%' stopColor='#7766DA' />
                 <stop offset='100%' stopColor='#5241B7' />
               </linearGradient>
-
               <linearGradient
                 id='timerGradient'
                 x1='0%'
@@ -477,7 +446,6 @@ const Timer: React.FC<TimerProps> = ({
                 <stop offset='0%' stopColor='#60A5FA' />
                 <stop offset='100%' stopColor='#1E40AF' />
               </linearGradient>
-
               <mask
                 id='eraseMask'
                 maskUnits='userSpaceOnUse'
@@ -500,7 +468,6 @@ const Timer: React.FC<TimerProps> = ({
               </mask>
             </defs>
 
-            {/* дыхание */}
             {state !== "initial" && (
               <circle
                 ref={breathCircleRef}
@@ -512,7 +479,6 @@ const Timer: React.FC<TimerProps> = ({
               />
             )}
 
-            {/* прогресс под маской */}
             {state !== "initial" && (
               <circle
                 ref={progressCircleRef}
@@ -530,7 +496,6 @@ const Timer: React.FC<TimerProps> = ({
               />
             )}
 
-            {/* метки */}
             <g fill='#FFFFFF'>
               <rect x={size / 2 - 2} y={0} width='4' height='24' rx='2' />
               <rect
@@ -550,7 +515,6 @@ const Timer: React.FC<TimerProps> = ({
               <rect x={0} y={size / 2 - 2} width='24' height='4' rx='2' />
             </g>
 
-            {/* бегущая точка */}
             {state !== "initial" && (
               <circle
                 ref={progressDotRef}
@@ -562,7 +526,6 @@ const Timer: React.FC<TimerProps> = ({
             )}
           </svg>
 
-          {/* центр — поверх круга */}
           <div
             ref={overlayRef}
             className='absolute inset-0 flex items-center justify-center'
@@ -587,7 +550,6 @@ const Timer: React.FC<TimerProps> = ({
 
       {state !== "initial" && (
         <div className='pointer-events-auto -mt-1 flex items-center justify-between gap-4 w-full'>
-          {/* Стоп */}
           <button
             type='button'
             onClick={handleStop}
@@ -609,7 +571,6 @@ const Timer: React.FC<TimerProps> = ({
             </svg>
           </button>
 
-          {/* Пауза / Продолжить */}
           <button
             type='button'
             onClick={handlePauseResume}
@@ -617,7 +578,6 @@ const Timer: React.FC<TimerProps> = ({
             className='p-0 bg-transparent border-0'
           >
             {isPaused ? (
-              // PLAY
               <svg
                 width='80'
                 height='80'
@@ -632,7 +592,7 @@ const Timer: React.FC<TimerProps> = ({
                 />
               </svg>
             ) : (
-              // PAUSE
+              /* Pause */
               <svg
                 width='80'
                 height='80'

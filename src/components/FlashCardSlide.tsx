@@ -37,7 +37,11 @@ export default function FlashcardSlide({
   onBack,
 }: FlashcardSlideProps) {
   const [bookmarked, setBookmarked] = useState(false);
+
+ 
   const [timerFinished, setTimerFinished] = useState(false);
+  const [timerHasStarted, setTimerHasStarted] = useState(false); 
+  const [timerKey, setTimerKey] = useState(0);
 
   const hasTyped = useMemo(
     () => card.type === "input" && userInput.trim().length > 0,
@@ -50,6 +54,20 @@ export default function FlashcardSlide({
 
   const isActiveNow = isActive || swiper?.activeIndex === index;
 
+
+  useEffect(() => {
+    if (!swiper || card.type !== "timer") return;
+    const resetTimerOnSlideChange = () => {
+      setTimerFinished(false);
+      setTimerKey((k) => k + 1);
+      
+    };
+    swiper.on("slideChange", resetTimerOnSlideChange);
+    return () => {
+      swiper.off("slideChange", resetTimerOnSlideChange);
+    };
+  }, [swiper, card.type]);
+
   const handleSubmit = () => {
     if (swiper && !isLastSlide) {
       swiper.slideTo(index + 1, 300);
@@ -57,6 +75,10 @@ export default function FlashcardSlide({
       onComplete?.();
     }
   };
+
+  
+  const showSwipeIcon =
+    index === 0 || (card.type === "timer" && timerHasStarted);
 
   return (
     <div className='h-full flex flex-col'>
@@ -91,9 +113,11 @@ export default function FlashcardSlide({
 
             <div className='flex-col items-center justify-center'>
               <Timer
+                key={timerKey}
                 timer={90}
                 className='mx-auto'
-                onComplete={() => setTimerFinished(true)}
+                onStart={() => setTimerHasStarted(true)} 
+                onComplete={() => setTimerFinished(true)} 
               />
             </div>
           </div>
@@ -164,7 +188,7 @@ export default function FlashcardSlide({
         )}
       </div>
 
-      {(index === 0 || timerFinished) && (
+      {showSwipeIcon && (
         <div className='flex justify-center mb-[4.125rem]'>
           <SwipeIcon />
         </div>

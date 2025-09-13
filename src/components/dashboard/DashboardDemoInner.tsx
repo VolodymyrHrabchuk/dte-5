@@ -27,7 +27,6 @@ function DashboardDemoInner() {
   const searchParams = useSearchParams();
   const showDiscoverOnly = searchParams.get("view") === "discover";
 
-
   const [hiteScore, setHiteScore] = useState<number>(952);
   const [level, setLevel] = useState<"Rookie" | "Starter">("Rookie");
   const [activeStreak, setActiveStreak] = useState<number>(5);
@@ -39,12 +38,12 @@ function DashboardDemoInner() {
   const [modalVisible, setModalVisible] = useState(false);
   const [modalFor, setModalFor] = useState<"train" | "execute" | null>(null);
 
-
   const [showAllDoneOnce, setShowAllDoneOnce] = useState(false);
 
   const prevDiscoverRef = useRef<string | null>(null);
   const prevTrainRef = useRef<string | null>(null);
 
+ 
   useEffect(() => {
     if (consumeJustFinishedFlag()) {
       setShowAllDoneOnce(true);
@@ -105,9 +104,7 @@ function DashboardDemoInner() {
     setTrainState(t);
     setExecuteState(e);
 
-
     readHiteFromStorage();
-
 
     const prevD = prevDiscoverRef.current;
     const prevT = prevTrainRef.current;
@@ -144,7 +141,6 @@ function DashboardDemoInner() {
     prevTrainRef.current = t;
   }, [showDiscoverOnly, showAllDoneOnce, readHiteFromStorage]);
 
-  
   useEffect(() => {
     if (!showDiscoverOnly || showAllDoneOnce) return;
     const p = readPlanProgress();
@@ -184,7 +180,6 @@ function DashboardDemoInner() {
     };
   }, [syncFromStorage]);
 
-
   const onModalAction = () => {
     setModalVisible(false);
     if (modalFor === "train") router.push("/train");
@@ -198,22 +193,20 @@ function DashboardDemoInner() {
       trainState === "completed" &&
       executeState === "completed");
 
+  
   useEffect(() => {
     if (!shouldShowAllDoneCard) return;
 
-    const timer = window.setTimeout(() => {
+    const id = window.setTimeout(() => {
       try {
-        // Чистим только используемые ключи, не трогаем остальное
-        localStorage.removeItem("planProgress");
-        localStorage.removeItem("hiteBase");
-        localStorage.removeItem("streakDays");
-        localStorage.removeItem("xpLevel");
+        localStorage.clear();
+        sessionStorage.clear();
       } catch {
-        // no-op
+        /* no-op */
       }
-    }, 5000);
+    }, 3000);
 
-    return () => window.clearTimeout(timer);
+    return () => window.clearTimeout(id);
   }, [shouldShowAllDoneCard]);
 
   return (
@@ -245,14 +238,14 @@ function DashboardDemoInner() {
                     <path
                       d='M15.5984 4.77441L15.5984 4.07007H15.5984V4.77441ZM21.781 10.957H22.4854V10.957L21.781 10.957ZM23.3455 17.5908L24.0498 17.5909V17.5908L23.3455 17.5908ZM20.1882 21.2939L20.288 21.9912L20.2881 21.9912L20.1882 21.2939ZM15.5974 21.6992L15.5974 22.4036H15.5974L15.5974 21.6992ZM11.0076 21.2939L10.9078 21.9912L10.9078 21.9912L11.0076 21.2939ZM7.85034 17.5908L7.14599 17.5908V17.5909L7.85034 17.5908ZM9.41577 10.957L8.71142 10.957V10.957H9.41577ZM15.5984 4.77441L15.5983 5.47876C18.6236 5.47899 21.0765 7.93181 21.0767 10.9571L21.781 10.957L22.4854 10.957C22.4852 7.15376 19.4016 4.07036 15.5984 4.07007L15.5984 4.77441ZM21.781 10.957H21.0767V13.077H21.781H22.4854V10.957H21.781ZM22.7487 15.537L22.1545 15.9152C22.4625 16.3991 22.6411 16.973 22.6411 17.5908L23.3455 17.5908L24.0498 17.5908C24.0498 16.6971 23.7905 15.862 23.3429 15.1588L22.7487 15.537ZM23.3455 17.5908L22.6411 17.5908C22.641 19.0931 21.5739 20.384 20.0884 20.5967L20.1882 21.2939L20.2881 21.9912C22.504 21.6738 24.0497 19.7563 24.0498 17.5909L23.3455 17.5908ZM20.1882 21.2939L20.0884 20.5967C18.6858 20.7975 16.9588 20.9948 15.5974 20.9949L15.5974 21.6992L15.5974 22.4036C17.0636 22.4035 18.8725 22.1938 20.288 21.9912L20.1882 21.2939ZM15.5974 21.6992L15.5974 20.9949C14.2362 20.9948 12.5099 20.7974 11.1074 20.5967L11.0076 21.2939L10.9078 21.9912C12.3232 22.1938 14.1313 22.4035 15.5974 22.4036L15.5974 21.6992ZM11.0076 21.2939L11.1074 20.5967C9.62179 20.3841 8.55476 19.0932 8.55469 17.5908L7.85034 17.5908L7.14599 17.5909C7.1461 19.7563 8.69158 21.674 10.9078 21.9912L11.0076 21.2939ZM7.85034 17.5908L8.55469 17.5908C8.55471 16.9727 8.73337 16.3986 9.04158 15.9145L8.44742 15.5362L7.85327 15.158C7.40546 15.8613 7.14602 16.6968 7.14599 17.5908L7.85034 17.5908ZM9.41577 13.0754H10.1201V10.957H9.41577H8.71142V13.0754H9.41577ZM9.41577 10.957L10.1201 10.9571C10.1203 7.93159 12.573 5.47876 15.5984 5.47876V4.77441V4.07007C11.7949 4.07007 8.71162 7.15365 8.71142 10.957L9.41577 10.957ZM8.44742 15.5362L9.04158 15.9145C9.50751 15.1826 10.1201 14.207 10.1201 13.0754H9.41577H8.71142C8.71142 13.7364 8.35003 14.3777 7.85327 15.158L8.44742 15.5362ZM21.781 13.077H21.0767C21.0767 14.2081 21.6888 15.1835 22.1545 15.9152L22.7487 15.537L23.3429 15.1588C22.8465 14.3788 22.4854 13.7377 22.4854 13.077H21.781Z'
                       fill='white'
-                      fill-opacity='0.8'
+                      fillOpacity='0.8'
                     />
                     <path
                       d='M17.5542 23.166C17.1336 23.8261 16.4143 24.2612 15.5977 24.2612C14.781 24.2612 14.0618 23.8261 13.6412 23.166'
                       stroke='white'
-                      stroke-opacity='0.8'
-                      stroke-width='1.4087'
-                      stroke-linecap='round'
+                      strokeOpacity='0.8'
+                      strokeWidth='1.4087'
+                      strokeLinecap='round'
                     />
                     <circle
                       cx='20.294'
