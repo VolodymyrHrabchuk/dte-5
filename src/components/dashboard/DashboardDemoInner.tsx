@@ -43,7 +43,6 @@ function DashboardDemoInner() {
   const prevDiscoverRef = useRef<string | null>(null);
   const prevTrainRef = useRef<string | null>(null);
 
- 
   useEffect(() => {
     if (consumeJustFinishedFlag()) {
       setShowAllDoneOnce(true);
@@ -193,7 +192,6 @@ function DashboardDemoInner() {
       trainState === "completed" &&
       executeState === "completed");
 
-  
   useEffect(() => {
     if (!shouldShowAllDoneCard) return;
 
@@ -281,7 +279,7 @@ function DashboardDemoInner() {
                 level={level}
                 streakDays={activeStreak}
                 weekLabel='This week'
-                plansDone={3}
+                plansDone={shouldShowAllDoneCard ? 3 : 2}
                 plansTotal={4}
                 timeSpent='1h 15m'
                 onShowMore={() => {}}
